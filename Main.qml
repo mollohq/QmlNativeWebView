@@ -1,63 +1,89 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
+import QtQuick.Layouts
 
 import com.mollohq.examples
 
 Window {
     height: 600
-    title: qsTr("WKWebView Example")
+    title: qsTr("WKWebView ScrollView Example")
     visible: true
     width: 800
 
-    Rectangle {
+    ColumnLayout {
         anchors.fill: parent
-        color: "lightgray"
+        spacing: 10
 
-        Rectangle {
-            anchors.centerIn: parent
-            border.color: "black"
-            border.width: 2
-            color: "white"
-            height: 400
-            width: 600
+        RowLayout {
+            Layout.fillWidth: true
 
-            WebViewItem {
-                id: webView
+            TextField {
+                id: urlInput
 
-                anchors.fill: parent
-                // Remove the margins
-                url: "https://www.svt.se/"
+                Layout.fillWidth: true
+                placeholderText: "Enter URL"
+                text: webView.url
+            }
+            Button {
+                text: "Load"
 
-                onHeightChanged: console.log("WebViewItem height:", height)
-
-                // Add this to check the actual size of the WebViewItem
-                onWidthChanged: console.log("WebViewItem width:", width)
-
-                // Rectangle {
-                //     anchors.fill: parent
-                //     color: "red"
-                //     opacity: 0.3
-                // }
+                onClicked: webView.loadUrl(urlInput.text)
             }
         }
-    }
-    TextField {
-        id: urlInput
+        ScrollView {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            clip: true
 
-        anchors.left: parent.left
-        anchors.margins: 10
-        anchors.right: loadButton.left
-        anchors.top: parent.top
-        placeholderText: "Enter URL"
-    }
-    Button {
-        id: loadButton
+            ColumnLayout {
+                spacing: 20
+                width: parent.width
 
-        anchors.margins: 10
-        anchors.right: parent.right
-        anchors.top: parent.top
-        text: "Load"
+                Rectangle {
+                    Layout.fillWidth: true
+                    color: "lightblue"
+                    height: 100
 
-        onClicked: webView.loadUrl(urlInput.text)
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Item above WebView"
+                    }
+                }
+                WebViewItem {
+                    id: webView
+
+                    Layout.fillWidth: true
+                    height: 400
+                    url: "https://www.svt.se"
+
+                    onUrlChanged: urlInput.text = this.url
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    color: "lightgreen"
+                    height: 100
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Item below WebView"
+                    }
+                }
+                Repeater {
+                    model: 5
+
+                    delegate: Rectangle {
+                        Layout.fillWidth: true
+                        color: Qt.rgba(Math.random(), Math.random(), Math.random(), 1)
+                        height: 100
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Scrollable Item " + (index + 1)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

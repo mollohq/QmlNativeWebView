@@ -1,14 +1,20 @@
 #include "WebViewItem.h"
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QSGSimpleRectNode>
+#include <QTimer>
 #import <WebKit/WebKit.h>
 
-class WebViewItem::Private {
+class WebViewItem::WebViewImplementation {
 public:
   WKWebView *webView;
   QString url;
   NSView *containerView;
   QPointer<QQuickWindow> window;
+  bool isInitialized;
+  QPointF lastPos;
+  QQuickItem *flickable;
+  QTimer *updateTimer;
 };
 
 @interface WebViewDelegate : NSObject <WKNavigationDelegate>
@@ -28,10 +34,54 @@ public:
 @end
 
 WebViewItem::WebViewItem(QQuickItem *parent)
-    : QQuickItem(parent), d(new Private) {
+    : QQuickItem(parent), d(new WebViewImplementation) {
   setFlag(ItemHasContents, true);
   setAcceptedMouseButtons(Qt::AllButtons);
   setAcceptHoverEvents(true);
+
+  d->isInitialized = false;
+  d->webView = nil;
+  d->containerView = nil;
+  d->flickable = nullptr;
+
+  d->updateTimer = new QTimer(this);
+  d->updateTimer->setInterval(16); // ~60 fps
+  d->updateTimer->setSingleShot(false);
+  connect(d->updateTimer, &QTimer::timeout, this,
+          &WebViewItem::updateWebViewGeometry);
+
+  connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *window) {
+    if (d->window)
+      disconnect(d->window, &QQuickWindow::beforeRendering, this,
+                 &WebViewItem::updateWebViewGeometry);
+
+    d->window = window;
+
+    if (window) {
+      initializeWebView();
+      connect(window, &QQuickWindow::beforeRendering, this,
+              &WebViewItem::updateWebViewGeometry, Qt::DirectConnection);
+    } else if (d->containerView) {
+      [d->containerView removeFromSuperview];
+    }
+  });
+
+  connect(this, &QQuickItem::xChanged, this,
+          &WebViewItem::updateWebViewGeometry);
+  connect(this, &QQuickItem::yChanged, this,
+          &WebViewItem::updateWebViewGeometry);
+}
+
+WebViewItem::~WebViewItem() {
+  if (d->containerView) {
+    [d->containerView removeFromSuperview];
+  }
+  d->updateTimer->stop();
+}
+
+void WebViewItem::initializeWebView() {
+  if (d->isInitialized)
+    return;
 
   d->containerView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 1, 1)];
 
@@ -44,57 +94,37 @@ WebViewItem::WebViewItem(QQuickItem *parent)
   delegate.item = this;
   d->webView.navigationDelegate = delegate;
 
-  connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *window) {
-    if (d->window)
-      disconnect(d->window, &QQuickWindow::beforeRendering, this,
-                 &WebViewItem::updateWebViewGeometry);
+  NSView *view =
+      (__bridge NSView *)reinterpret_cast<void *>(d->window->winId());
+  [view addSubview:d->containerView];
 
-    d->window = window;
+  d->isInitialized = true;
 
-    if (window) {
-      NSView *view =
-          (__bridge NSView *)reinterpret_cast<void *>(window->winId());
-      [view addSubview:d->containerView];
-      connect(window, &QQuickWindow::beforeRendering, this,
-              &WebViewItem::updateWebViewGeometry, Qt::DirectConnection);
-    } else if (d->containerView.superview) {
-      [d->containerView removeFromSuperview];
-    }
-  });
+  if (!d->url.isEmpty()) {
+    loadUrl(d->url);
+  }
 
-  connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *window) {
-    if (d->window)
-      disconnect(d->window, &QQuickWindow::beforeRendering, this,
-                 &WebViewItem::updateWebViewGeometry);
-
-    d->window = window;
-
-    if (window) {
-      NSView *view =
-          (__bridge NSView *)reinterpret_cast<void *>(window->winId());
-      [view addSubview:d->containerView];
-      connect(window, &QQuickWindow::beforeRendering, this,
-              &WebViewItem::updateWebViewGeometry, Qt::DirectConnection);
-      // Add this line to update geometry when the window is resized
-      connect(window, &QQuickWindow::widthChanged, this,
-              &WebViewItem::updateWebViewGeometry);
-      connect(window, &QQuickWindow::heightChanged, this,
-              &WebViewItem::updateWebViewGeometry);
-    } else if (d->containerView.superview) {
-      [d->containerView removeFromSuperview];
-    }
-  });
-
-  // Add these connections to update geometry when the item's position changes
-  connect(this, &QQuickItem::xChanged, this,
-          &WebViewItem::updateWebViewGeometry);
-  connect(this, &QQuickItem::yChanged, this,
-          &WebViewItem::updateWebViewGeometry);
+  updateWebViewGeometry();
+  connectToScrollView();
 }
 
-WebViewItem::~WebViewItem() {
-  if (d->containerView.superview) {
-    [d->containerView removeFromSuperview];
+QQuickItem *WebViewItem::findScrollView() {
+  QQuickItem *parent = parentItem();
+  while (parent) {
+    if (QString(parent->metaObject()->className()) == "QQuickFlickable") {
+      return parent;
+    }
+    parent = parent->parentItem();
+  }
+  return nullptr;
+}
+
+void WebViewItem::connectToScrollView() {
+  d->flickable = findScrollView();
+  if (d->flickable) {
+    connect(d->flickable, SIGNAL(contentYChanged()), this,
+            SLOT(updateWebViewGeometry()));
+    d->updateTimer->start();
   }
 }
 
@@ -103,17 +133,20 @@ QString WebViewItem::url() const { return d->url; }
 void WebViewItem::setUrl(const QString &url) {
   if (d->url != url) {
     d->url = url;
+    if (d->isInitialized) {
+      loadUrl(url);
+    }
     emit urlChanged();
   }
 }
 
 void WebViewItem::loadUrl(const QString &url) {
-  if (d->url != url) {
-    d->url = url;
+  if (d->isInitialized && d->webView) {
     NSURL *nsUrl = [NSURL URLWithString:url.toNSString()];
     [d->webView loadRequest:[NSURLRequest requestWithURL:nsUrl]];
     qDebug() << "Loading URL:" << url;
-    emit urlChanged();
+  } else {
+    d->url = url; // Store the URL for later loading
   }
 }
 
@@ -130,22 +163,33 @@ void WebViewItem::updateWebViewGeometry() {
   QPointF scenePos = mapToScene(QPointF(0, 0));
   QSizeF size = boundingRect().size();
 
+  // Adjust for scroll position
+  if (d->flickable) {
+    qreal contentY = d->flickable->property("contentY").toReal();
+    scenePos.setY(scenePos.y() - contentY);
+  }
+
   NSView *view =
       (__bridge NSView *)reinterpret_cast<void *>(d->window->winId());
   NSRect bounds = [view bounds];
 
-  // Calculate the position relative to the bottom-left corner of the window
   CGFloat flippedY = bounds.size.height - scenePos.y() - size.height();
 
   NSRect newFrame =
       NSMakeRect(scenePos.x(), flippedY, size.width(), size.height());
 
-  if (!NSEqualRects([d->containerView frame], newFrame)) {
+  if (!NSEqualRects([d->containerView frame], newFrame) ||
+      scenePos != d->lastPos) {
     [d->containerView setFrame:newFrame];
     [d->webView setFrame:[d->containerView bounds]];
+    d->lastPos = scenePos;
   }
 
   [d->containerView setHidden:!isVisible()];
+
+  qDebug() << "Updating geometry: " << scenePos << " Size: " << size
+           << " ContentY: "
+           << (d->flickable ? d->flickable->property("contentY").toReal() : 0);
 }
 
 QSGNode *WebViewItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
@@ -157,4 +201,16 @@ QSGNode *WebViewItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
   rectNode->setRect(boundingRect());
 
   return rectNode;
+}
+
+void WebViewItem::componentComplete() {
+  QQuickItem::componentComplete();
+  initializeWebView();
+}
+
+void WebViewItem::itemChange(ItemChange change, const ItemChangeData &value) {
+  QQuickItem::itemChange(change, value);
+  if (change == ItemSceneChange && value.window) {
+    connectToScrollView();
+  }
 }

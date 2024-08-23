@@ -24,11 +24,18 @@ protected:
   void geometryChange(const QRectF &newGeometry,
                       const QRectF &oldGeometry) override;
   QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
+  void componentComplete() override;
+  void itemChange(ItemChange change, const ItemChangeData &value) override;
+
+private slots:
+  void updateWebViewGeometry();
 
 private:
-  void updateWebViewGeometry();
-  class Private;
-  QScopedPointer<Private> d;
+  void initializeWebView();
+  void connectToScrollView();
+  QQuickItem *findScrollView();
+  class WebViewImplementation;
+  QScopedPointer<WebViewImplementation> d;
 };
 
 #endif // WEBVIEWITEM_H
