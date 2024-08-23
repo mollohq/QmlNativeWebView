@@ -3,8 +3,6 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import com.mollohq.examples
-
 Window {
     height: 600
     title: qsTr("WKWebView ScrollView Example")
@@ -23,14 +21,17 @@ Window {
 
                 Layout.fillWidth: true
                 placeholderText: "Enter URL"
-                text: webView.url
+                text: webViewManager.url
             }
             Button {
                 text: "Load"
 
-                onClicked: webView.loadUrl(urlInput.text)
+                onClicked: webViewManager.url = urlInput.text
             }
         }
+
+        // You could just use NativeWebView {} anywhere here, but i wanted to test the integration
+        // in a more complex app, like scrolling the view etc.
         ScrollView {
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -50,14 +51,12 @@ Window {
                         text: "Item above WebView"
                     }
                 }
-                WebViewItem {
+                NativeWebView {
                     id: webView
 
                     Layout.fillWidth: true
                     height: 400
-                    url: "https://www.svt.se"
-
-                    onUrlChanged: urlInput.text = this.url
+                    url: "https://svt.se"
                 }
                 Rectangle {
                     Layout.fillWidth: true

@@ -37,8 +37,8 @@ qt_standard_project_setup(REQUIRES 6.5)
 
 set(PROJECT_SOURCES
         main.cpp
-        WebViewItem.h
-        WebViewItem.mm
+        customwebviewwindow.h
+        customwebviewwindow.mm
 )
 
 
@@ -51,6 +51,7 @@ qt_add_qml_module(NativeWebView
     VERSION 1.0
     QML_FILES
         Main.qml
+        NativeWebView.qml
 )
 
 target_link_libraries(NativeWebView PRIVATE
