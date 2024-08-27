@@ -9,11 +9,11 @@ A lightweight custom WebView component for Qt/QML applications that utilizes the
 - Seamless integration with Qt/QML applications
 - Supports Qt 6.7 and above
 - Works on Windows (using WebView2 Edge engine) and macOS (using WebKit)
-- No *nix support currently, since I don't use it, but contributions are welcome
+- No *nix support currently, but contributions are welcome
 
 ## Why?
 
-We needed to show web content in our application [Mollo](https://github.com/mollo), and developed this since we didn't want to bundle Chromium in our app just to show some web content. 
+We needed to show web content in our application [Mollo](https://mollo.io), and developed this since we didn't want to bundle Chromium in our app just to show some web content. 
 
 ## Requirements
 
@@ -91,12 +91,10 @@ Window {
 
     NativeWebView {
         anchors.fill: parent
-        url: "https://www.example.com"
+        url: "https://mollo.io"
     }
 }
 ```
-
-For more detailed usage instructions and API documentation, please refer to the [Wiki](https://github.com/yourusername/custom-webview-qt/wiki).
 
 ## Contributing
 
