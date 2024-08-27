@@ -1,6 +1,7 @@
 # Custom WebView Qt/QML Component
 
 A lightweight custom WebView component for Qt/QML applications that utilizes the native OS-bundled WebView to display web content. This approach significantly reduces the application size by avoiding the need to bundle the full QtWebEngine.
+Repo is a full example application showing the usage.
 
 ## Features
 
