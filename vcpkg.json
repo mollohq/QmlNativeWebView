@@ -1,0 +1,10 @@
+{
+  "name": "nativewebview-qt-integration",
+  "version-string": "0.1.0",
+  "dependencies": [
+    {
+      "name": "webview2",
+      "platform": "windows"
+    }
+  ]
+}

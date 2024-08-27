@@ -3,11 +3,12 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Window {
-    height: 600
-    title: qsTr("WKWebView ScrollView Example")
+ApplicationWindow {
+    width: 1024
+    height: 780
+
+    title: qsTr("Custom WebView Example")
     visible: true
-    width: 800
 
     ColumnLayout {
         anchors.fill: parent
@@ -21,12 +22,12 @@ Window {
 
                 Layout.fillWidth: true
                 placeholderText: "Enter URL"
-                text: webViewManager.url
+                text: webView.url
             }
             Button {
                 text: "Load"
 
-                onClicked: webViewManager.url = urlInput.text
+                onClicked: webView.url = urlInput.text
             }
         }
 
@@ -51,13 +52,19 @@ Window {
                         text: "Item above WebView"
                     }
                 }
-                NativeWebView {
-                    id: webView
 
+                Item {
                     Layout.fillWidth: true
-                    height: 400
-                    url: "https://svt.se"
+                    height: 600
+
+                    NativeWebView {
+                        id: webView
+
+                        anchors.fill: parent
+                        url: "https://mollo.io"
+                    }
                 }
+
                 Rectangle {
                     Layout.fillWidth: true
                     color: "lightgreen"

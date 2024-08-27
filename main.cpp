@@ -1,4 +1,5 @@
-#include "customwebviewwindow.h"
+#include "customwebview.h"
+
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -9,11 +10,12 @@ int main(int argc, char *argv[]) {
 
   QQmlApplicationEngine engine;
 
-  CustomWebviewWindow *customWebViewMgr = new CustomWebviewWindow();
+  // Our custom webviews for each platform, we're using native webviews instead
+  // of bundling full Chromium thru QtWebEngine
 
-  engine.rootContext()->setContextProperty("webViewWindow",
-                                           customWebViewMgr->webWindow());
-  engine.rootContext()->setContextProperty("webViewManager", customWebViewMgr);
+  CustomWebView *customWebView = new CustomWebView();
+
+  engine.rootContext()->setContextProperty("webViewWindow", customWebView);
 
   QObject::connect(
       &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

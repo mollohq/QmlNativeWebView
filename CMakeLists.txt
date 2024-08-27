@@ -1,46 +1,47 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(NativeWebView VERSION 0.1 LANGUAGES CXX)
+# Setup VCPKG script with CMake (note: should be placed before project() call)
+list(APPEND VCPKG_FEATURE_FLAGS "versions")
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 
-# set(CMAKE_CXX_STANDARD 17)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+message(" [INFO] VCPKG CMAKE_TOOLCHAIN_FILE = ${CMAKE_TOOLCHAIN_FILE}")
+message(" [INFO] VCPKG TRIPLET = ${VCPKG_TARGET_TRIPLET}")
 
-# find_package(Qt6 REQUIRED COMPONENTS Core Quick)
+project(NativeWebView VERSION 0.1 LANGUAGES C CXX)
 
-# set(PROJECT_SOURCES
-#         main.cpp
-#         test.h
-#         test.cpp
-#         #WebViewItem.h
-#         #WebViewItem.mm
-#         Main.qml
-# )
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 
-# qt_add_executable(QmlWKWebViewExample
-#     ${PROJECT_SOURCES}
+if(WIN32)
+  set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "")
+endif()
 
-# )
 
-# target_link_libraries(QmlWKWebViewExample PRIVATE
-#     Qt6::Core
-#     Qt6::Quick
-#     "-framework WebKit"
-#     "-framework Foundation"
-#     "-framework Cocoa"
-# )
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(Qt6 6.5 REQUIRED COMPONENTS Quick QuickWidgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Quick QuickWidgets)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
+# WebView2 setup
+if(MSVC)
+    find_package(unofficial-webview2 CONFIG REQUIRED)
+endif()
+
 set(PROJECT_SOURCES
         main.cpp
-        customwebviewwindow.h
-        customwebviewwindow.mm
+        customwebview.h
+
 )
 
+# Platform-specific implementations of Custom Web View.
+# On macOS we use the OS-provided WebKit (Safari engine)
+# On Windows we use WebView2, which is the Edge engine and already provided by the OS
+if (APPLE)
+    set(PROJECT_SOURCES ${PROJECT_SOURCES} customwebview_mac.mm)
+elseif (WIN32 AND MSVC)
+  set(PROJECT_SOURCES ${PROJECT_SOURCES} customwebview_win.cpp)
+elseif (UNIX AND ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    set(PROJECT_SOURCES ${PROJECT_SOURCES} customwebview_nix.cpp)
+endif ()
 
 qt_add_executable(NativeWebView
     ${PROJECT_SOURCES}
@@ -52,13 +53,23 @@ qt_add_qml_module(NativeWebView
     QML_FILES
         Main.qml
         NativeWebView.qml
+        SOURCES
 )
 
 target_link_libraries(NativeWebView PRIVATE
-    Qt6::Quick
-    Qt6::QuickWidgets
-    "-framework WebKit"
+    Qt::Core
+    Qt::Quick
 )
+
+if (APPLE)
+    target_link_libraries(${PROJECT_NAME}
+      PUBLIC
+      "-framework WebKit"
+     )
+elseif(WIN32)
+  target_link_libraries(${PROJECT_NAME} PRIVATE user32.lib gdi32.lib)
+  target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::webview2::webview2)
+endif()
 
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
