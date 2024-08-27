@@ -4,11 +4,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 ApplicationWindow {
-    width: 1024
     height: 780
-
     title: qsTr("Custom WebView Example")
     visible: true
+    width: 1024
 
     ColumnLayout {
         anchors.fill: parent
@@ -23,6 +22,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 placeholderText: "Enter URL"
                 text: webView.url
+
+                onAccepted: webView.url = urlInput.text
             }
             Button {
                 text: "Load"
@@ -52,7 +53,6 @@ ApplicationWindow {
                         text: "Item above WebView"
                     }
                 }
-
                 Item {
                     Layout.fillWidth: true
                     height: 600
@@ -64,7 +64,6 @@ ApplicationWindow {
                         url: "https://mollo.io"
                     }
                 }
-
                 Rectangle {
                     Layout.fillWidth: true
                     color: "lightgreen"
